@@ -12,9 +12,8 @@ public class UserProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long profileId;
 
-    private Long userId;  // 자료형을 int로 수정
+    private Long userId;  // id값 Long으로 변경
     private String userNickName;
-    private String userBody;
     private String imageUrl;
     private Integer point;
 
@@ -23,16 +22,12 @@ public class UserProfile {
         return profileId;
     }
 
-    public Long getUserId() {  // 자료형을 int로 수정
+    public Long getUserId() {  // Long으로 수정
         return userId;
     }
 
     public String getUserNickName() {
         return userNickName;
-    }
-
-    public String getUserBody() {
-        return userBody;
     }
 
     public String getImageUrl() {
@@ -47,16 +42,12 @@ public class UserProfile {
         this.profileId = profileId;
     }
 
-    public void setUserId(Long userId) {  // 자료형을 int로 수정
+    public void setUserId(Long userId) {  // Long으로 수정
         this.userId = userId;
     }
 
     public void setUserNickName(String userNickName) {
         this.userNickName = userNickName;
-    }
-
-    public void setUserBody(String userBody) {
-        this.userBody = userBody;
     }
 
     public void setImageUrl(String imageUrl) {

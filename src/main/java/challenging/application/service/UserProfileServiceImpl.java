@@ -33,7 +33,6 @@ public class UserProfileServiceImpl implements UserProfileService {
     public UserProfileResponseDTO convertToDTO(UserProfile userProfile) {
         return new UserProfileResponseDTO(
             userProfile.getUserNickName(),
-            userProfile.getUserBody(),
             userProfile.getImageUrl(),
             userProfile.getPoint()
         );
@@ -45,7 +44,6 @@ public class UserProfileServiceImpl implements UserProfileService {
         UserProfile userProfile = new UserProfile();
         userProfile.setUserId(memberId);  // Member의 id 값을 설정
         userProfile.setUserNickName("New User");
-        userProfile.setUserBody("Default body");
         userProfile.setImageUrl("Default image URL");
         userProfile.setPoint(1000);
         return saveUserProfile(userProfile);
@@ -58,11 +56,6 @@ public class UserProfileServiceImpl implements UserProfileService {
 
         if (updates.containsKey("user_nick_name")) {
             userProfile.setUserNickName(updates.get("user_nick_name"));
-            isUpdated = true;
-        }
-
-        if (updates.containsKey("user_body")) {
-            userProfile.setUserBody(updates.get("user_body"));
             isUpdated = true;
         }
 

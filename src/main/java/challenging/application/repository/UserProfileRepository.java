@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
 
-    // Member의 id를 사용하여 UserProfile을 조회하는 메서드로 수정
+    // Member의 id를 사용하여 UserProfile을 조회
     Optional<UserProfile> findByUserId(Long userId);
 }
