@@ -1,10 +1,13 @@
 package challenging.application.auth.oauth;
 
 import challenging.application.auth.domain.Member;
+import challenging.application.auth.oauth.oauthResponse.KakaoResponse;
 import challenging.application.auth.oauth.oauthResponse.NaverResponse;
 import challenging.application.auth.oauth.oauthResponse.OAuth2Response;
 import challenging.application.auth.repository.MemberRepository;
-import lombok.AllArgsConstructor;
+import challenging.application.userprofile.domain.UserProfile;
+import challenging.application.userprofile.repository.UserProfileRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -14,12 +17,15 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+import static challenging.application.auth.utils.AuthConstant.*;
+
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Slf4j
 public class OAuth2UserServiceImpl extends DefaultOAuth2UserService {
 
     private final MemberRepository memberRepository;
+    private final UserProfileRepository userProfileRepository;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
@@ -32,8 +38,14 @@ public class OAuth2UserServiceImpl extends DefaultOAuth2UserService {
 
         OAuth2Response oAuth2Response = null;
 
-        if(registrationId.equals("naver")){
+        if(registrationId.equals(NAVER)){
             oAuth2Response = new NaverResponse(oAuth2User.getAttributes());
+        }
+        else if (registrationId.equals(KAKAO)){
+            oAuth2Response = new KakaoResponse(oAuth2User.getAttributes());
+        }
+        else{
+            return null;
         }
 
         String username = oAuth2Response.getProvider() + " " + oAuth2Response.getProviderId();
@@ -46,11 +58,14 @@ public class OAuth2UserServiceImpl extends DefaultOAuth2UserService {
             return new OAuth2UserImpl(member);
         }
 
-        Member member = new Member(username, username, oAuth2Response.getEmail(), "ROLE_USER");
+        UserProfile userProfile = new UserProfile();
+
+        Member member = new Member(username, username, oAuth2Response.getEmail(), "ROLE_USER",userProfile);
 
         memberRepository.save(member);
 
-        return new OAuth2UserImpl(member);
+        userProfileRepository.save(userProfile);
 
+        return new OAuth2UserImpl(member);
     }
 }
