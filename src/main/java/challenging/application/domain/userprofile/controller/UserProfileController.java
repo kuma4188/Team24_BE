@@ -3,42 +3,59 @@ package challenging.application.domain.userprofile.controller;
 import challenging.application.global.dto.response.userprofile.UserProfileGetResponse;
 import challenging.application.global.dto.response.userprofile.UserProfilePutResponse;
 import challenging.application.global.security.annotation.LoginMember;
-import challenging.application.global.dto.request.UserProfileRequest;
-import challenging.application.domain.auth.entity.Member; // Member 엔터티
+import challenging.application.domain.auth.entity.Member;
+import challenging.application.global.dto.request.UserProfileRequest.UserProfilePutRequest;
 import challenging.application.domain.userprofile.service.UserProfileService;
 import challenging.application.global.dto.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-@RestController
+@Controller
 @RequiredArgsConstructor
 @RequestMapping("/api/userprofile")
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
 
+    // 유저 프로필 조회 페이지 렌더링
     @GetMapping
-    public ResponseEntity<ApiResponse<?>> getUserProfile(@LoginMember Member user) {
-
+    public String getUserProfilePage(@LoginMember Member user, Model model) {
         UserProfileGetResponse userProfileResponse = userProfileService.getUserProfile(user.getId());
-
-        return ResponseEntity.status(HttpStatus.OK)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(ApiResponse.successResponse(userProfileResponse));
+        model.addAttribute("userProfile", userProfileResponse);
+        return "userprofile"; // userprofile.html 템플릿 렌더링
     }
 
-    @PostMapping
+    // 유저 프로필 조회 API
+    @GetMapping("/data")
+    @ResponseBody
+    public ResponseEntity<ApiResponse<?>> getUserProfile(@LoginMember Member user) {
+        UserProfileGetResponse userProfileResponse = userProfileService.getUserProfile(user.getId());
+        return ResponseEntity.status(HttpStatus.OK)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(ApiResponse.successResponse(userProfileResponse));
+    }
+
+    // 유저 프로필 수정 API
+    @PostMapping("/data")
+    @ResponseBody
     public ResponseEntity<ApiResponse<?>> updateUserProfile(
-            @LoginMember Member user,
-            @RequestBody UserProfileRequest.UserProfilePutRequest userProfilePutRequest) {
-        UserProfilePutResponse userProfileResponse = userProfileService.putUserProfile(user.getId(),
-                userProfilePutRequest);
-
+        @LoginMember Member user,
+        @RequestParam("userNickName") String userNickName,
+        @RequestParam(value = "extension", required = false) String extension,
+        @RequestParam(value = "image", required = false) MultipartFile image) {
+        UserProfilePutRequest userProfilePutRequest = new UserProfilePutRequest(userNickName, extension, image);
+        UserProfilePutResponse userProfileResponse = userProfileService.putUserProfile(user.getId(), userProfilePutRequest);
         return ResponseEntity.status(HttpStatus.OK)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(ApiResponse.successResponse(userProfileResponse));
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(ApiResponse.successResponse(userProfileResponse));
     }
+
+
 }
+
