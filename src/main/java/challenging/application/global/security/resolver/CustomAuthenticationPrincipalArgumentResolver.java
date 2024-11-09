@@ -16,13 +16,14 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+import java.util.Optional;
+
 @Component
 @AllArgsConstructor
 @Slf4j
 public class CustomAuthenticationPrincipalArgumentResolver implements HandlerMethodArgumentResolver {
 
     private final JWTUtils jwtUtils;
-
     private final MemberRepository memberRepository;
 
     @Override
@@ -32,31 +33,30 @@ public class CustomAuthenticationPrincipalArgumentResolver implements HandlerMet
 
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
+        NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (isAuthenticationMember(authentication)) {
+        if (isAnonymous(authentication)) {
             log.info("Authentication 객체가 없거나, 익명 사용자 입니다.");
             return null;
         }
 
-        Member member = getMemberFromAuthentication(authentication);
+        Member member = getMemberFromAuthentication(authentication)
+            .orElseThrow(() -> new IllegalArgumentException("해당 UUID로 사용자를 찾을 수 없습니다."));
 
         log.info("member name = {}", member.getUsername());
-
         return member;
     }
 
-    private Member getMemberFromAuthentication(Authentication authentication) {
-        // jwt token 추출
+    private Optional<Member> getMemberFromAuthentication(Authentication authentication) {
         String token = (String) authentication.getPrincipal();
 
         String uuid = jwtUtils.getUUID(token);
 
-        return memberRepository.findByUuid(uuid).orElseThrow();
+        return memberRepository.findByUuid(uuid);
     }
 
-    private boolean isAuthenticationMember(Authentication authentication) {
+    private boolean isAnonymous(Authentication authentication) {
         return authentication == null || authentication instanceof AnonymousAuthenticationToken;
     }
 }
