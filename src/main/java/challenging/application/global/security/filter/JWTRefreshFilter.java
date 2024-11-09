@@ -1,7 +1,6 @@
 package challenging.application.global.security.filter;
 
 import challenging.application.domain.auth.repository.RefreshTokenRepository;
-import challenging.application.global.error.ErrorCode;
 import challenging.application.global.security.utils.servletUtils.jwtUtils.FilterResponseUtils;
 import challenging.application.domain.auth.constant.AuthConstant;
 import challenging.application.global.security.utils.servletUtils.cookie.CookieUtils;
@@ -36,7 +35,7 @@ public class JWTRefreshFilter extends OncePerRequestFilter {
         String refresh = CookieUtils.checkRefreshTokenInCookie(request);
 
         if (refresh == null) {
-            filterResponseUtils.generateTokenErrorResponse(ErrorCode.TOKEN_ERROR, response);
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
 
@@ -59,7 +58,7 @@ public class JWTRefreshFilter extends OncePerRequestFilter {
     }
 
     private boolean isUrlRefresh(String requestUri) {
-        return requestUri.matches("^/api/reissue(?:/.*)?$");
+        return requestUri.matches("^\\/reissue(?:\\/.*)?$");
     }
 
 }

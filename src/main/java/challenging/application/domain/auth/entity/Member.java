@@ -28,7 +28,7 @@ public class Member {
     private String role;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "userprofile_id")
+    @JoinColumn(name = "userProfile")
     private UserProfile userProfile;
 
     protected Member() {

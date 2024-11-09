@@ -2,9 +2,10 @@ package challenging.application.domain.history.service;
 
 import challenging.application.domain.challenge.service.ChallengeService;
 import challenging.application.domain.history.repository.HistoryRepository;
-import challenging.application.global.dto.response.chalenge.ChallengeGetResponse;
-import challenging.application.global.dto.response.history.HistoryGetResponse;
+import challenging.application.global.dto.response.ChallengeResponse;
+import challenging.application.global.dto.response.HistoryResponse;
 import challenging.application.global.error.ErrorCode;
+import challenging.application.global.error.challenge.ChallengeNotFoundException;
 import challenging.application.global.error.history.HistoryNotFoundException;
 import challenging.application.domain.history.entity.History;
 import lombok.RequiredArgsConstructor;
@@ -23,26 +24,26 @@ public class HistoryServiceImpl implements HistoryService {
   private final ChallengeService challengeService;
 
   @Override
-  public HistoryGetResponse findOneHistory(Long memberId, Long historyId) {
+  public HistoryResponse findOneHistory(Long memberId, Long historyId) {
     History history = historyRepository.findHistoryByMemberIdAndId(memberId, historyId)
         .orElseThrow(() -> new HistoryNotFoundException(ErrorCode.HISTORY_NOT_FOUND_ERROR));
 
-    ChallengeGetResponse challengeGetResponseDTO = challengeService.findOneChallenge(history.getChallenge().getId());
+    ChallengeResponse challengeResponseDTO = challengeService.findOneChallenge(history.getChallenge().getId());
 
-    return HistoryGetResponse.of(challengeGetResponseDTO, history);
+    return HistoryResponse.of(challengeResponseDTO, history);
   }
 
   @Override
-  public List<HistoryGetResponse> findAllHistory(Long memberId) {
+  public List<HistoryResponse> findAllHistory(Long memberId) {
     List<History> histories = historyRepository.findAllByMemberId(memberId);
 
-    List<HistoryGetResponse> historyGetRespons = histories.stream()
+    List<HistoryResponse> historyResponses = histories.stream()
         .map(history -> {
-          ChallengeGetResponse challengeGetResponseDTO = challengeService.findOneChallenge(history.getChallenge().getId());
-          return HistoryGetResponse.of(challengeGetResponseDTO, history);
+          ChallengeResponse challengeResponseDTO = challengeService.findOneChallenge(history.getChallenge().getId());
+          return HistoryResponse.of(challengeResponseDTO, history);
         })
         .collect(Collectors.toList());
 
-    return historyGetRespons;
+    return historyResponses;
   }
 }

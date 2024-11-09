@@ -1,5 +1,6 @@
 package challenging.application.global.security.filter;
 
+import challenging.application.global.TokenStorage;
 import challenging.application.global.security.utils.jwt.JWTUtils;
 import challenging.application.global.security.utils.servletUtils.jwtUtils.FilterResponseUtils;
 import challenging.application.domain.auth.constant.AuthConstant;
@@ -50,13 +51,25 @@ public class JWTAccessFilter extends OncePerRequestFilter {
             return;
         }
 
-        String authorization = request.getHeader(AuthConstant.AUTHORIZATION);
+        //String authorization = request.getHeader(AuthConstant.AUTHORIZATION);
+
+    // TokenStorage에서 authorization123 가져오기
+        String authorization = TokenStorage.accessToken;
+
+        // 클라이언트 요청에서 Authorization 헤더 로그 추가
+        //log.info("JWTAccessFilter - TokenStorage에서 가져온 authorization123: {}", authorization1);
+
+
+
+        // 클라이언트 요청에서 Authorization 헤더 로그 추가
+        //log.info("JWTAccessFilter - 클라이언트 요청 Authorization 헤더: {}", authorization);
+
 
         //Authorization 헤더 검증
         if (checkHeader(authorization)) {
 
             log.info("Access Token Not Exist");
-            filterResponseUtils.generateUnAuthorizationErrorResponse(ErrorCode.UNAUTHORIZED_USER_ERROR, response);
+            filterResponseUtils.generateUnauthorizedErrorResponse(ErrorCode.CHALLENGE_UNAUTHORIZED_ERROR, response);
             return;
         }
 

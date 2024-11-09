@@ -3,10 +3,12 @@ package challenging.application.domain.userprofile.service;
 import challenging.application.domain.userprofile.domain.UserProfile;
 import challenging.application.domain.userprofile.repository.UserProfileRepository;
 import challenging.application.global.dto.request.UserProfileRequest.UserProfilePutRequest;
-import challenging.application.global.dto.response.userprofile.UserProfileGetResponse;
-import challenging.application.global.dto.response.userprofile.UserProfilePutResponse;
+import challenging.application.global.dto.response.UserProfileResponse.UserProfileGetResponse;
+import challenging.application.global.dto.response.UserProfileResponse.UserProfilePutResponse;
 import challenging.application.global.images.S3PresignedImageService;
+import java.io.IOException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class UserProfileService {
@@ -21,43 +23,49 @@ public class UserProfileService {
     }
 
     public UserProfileGetResponse getUserProfile(Long memberId) {
-        UserProfile userProfile = userProfileRepository.findByMemberId(memberId).orElseThrow(
-            () -> new RuntimeException()
-        );
+        UserProfile userProfile = userProfileRepository.findByMemberId(memberId)
+            .orElseThrow(() -> new UserProfileNotFoundException(
+                "User profile not found for member ID: " + memberId));
+
         String presignedGetUrl = null;
-        if (userProfile.getImageExtension() != null && userProfile.getImageExtension() != null) {
+        if (userProfile.getImageExtension() != null) {
             presignedGetUrl = s3PresignedImageService.createUserPresignedGetUrl(
-                userProfile.getImageExtension(),
-                userProfile.getMember().getUuid()
+                userProfile.getImageExtension(), userProfile.getMember().getUuid()
             );
         }
 
-        UserProfileGetResponse userProfileGetResponse = UserProfileGetResponse.of(userProfile,presignedGetUrl);
-
-
-        return userProfileGetResponse;
+        return UserProfileGetResponse.of(userProfile, presignedGetUrl);
     }
 
-    public UserProfilePutResponse putUserProfile(Long memberId, UserProfilePutRequest userProfilePutRequest){
-        UserProfile userProfile = userProfileRepository.findByMemberId(memberId).orElseThrow(
-            () -> new RuntimeException()
-        );
+    public UserProfilePutResponse putUserProfile(Long memberId, UserProfilePutRequest userProfilePutRequest) {
+        UserProfile userProfile = userProfileRepository.findByMemberId(memberId)
+            .orElseThrow(() -> new UserProfileNotFoundException(
+                "User profile not found for member ID: " + memberId));
+
+        // 닉네임과 이미지 확장자 업데이트
         userProfile.updateUserNickName(userProfilePutRequest.userNickName());
-        userProfile.updateImageExtension(userProfilePutRequest.Extension());
+        userProfile.updateImageExtension(userProfilePutRequest.extension());
 
+        // Presigned URL 생성
         String presignedPutUrl = null;
-
-        if (userProfile.getImageExtension() != null && userProfile.getImageExtension() != null) {
+        if (userProfilePutRequest.extension() != null) {
             presignedPutUrl = s3PresignedImageService.createUserPresignedPutUrl(
-                userProfile.getImageExtension(),
-                userProfile.getMember().getUuid()
-            );
+                userProfilePutRequest.extension(), userProfile.getMember().getUuid());
         }
 
+        // 변경 사항 저장
+        userProfileRepository.save(userProfile);
 
-
-        return new UserProfilePutResponse(userProfilePutRequest.userNickName(),presignedPutUrl);
+        return new UserProfilePutResponse(userProfile.getUserNickName(), presignedPutUrl);
     }
 
 
+
+    public static class UserProfileNotFoundException extends RuntimeException {
+        public UserProfileNotFoundException(String message) {
+            super(message);
+        }
+    }
 }
+
+

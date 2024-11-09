@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>유저 프로파일</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.24.0/axios.min.js"></script>
+</head>
+<body>
+
+<h1>유저 프로파일 정보</h1>
+<div>
+  <p>닉네임:
+    <span th:text="${userProfile.userNickName != null ? userProfile.userNickName : 'NULL'}">닉네임</span>
+  </p>
+  <p>포인트:
+    <span th:text="${userProfile.point != null ? userProfile.point : 'NULL'}">포인트</span>
+  </p>
+  <p>이미지:
+    <span th:if="${userProfile.imgUrl != null}">
+            <img th:src="${userProfile.imgUrl}" alt="유저 이미지" width="100" height="100"/>
+        </span>
+    <span th:if="${userProfile.imgUrl == null}">NULL</span>
+  </p>
+</div>
+
+<h2>유저 프로파일 수정</h2>
+<form id="userProfileForm">
+  <label for="userNickName">닉네임:</label>
+  <input type="text" id="userNickName" name="userNickName" th:value="${userProfile.userNickName != null ? userProfile.userNickName : ''}"/>
+
+  <label for="image">이미지 파일:</label>
+  <input type="file" id="image" name="image"/>
+
+  <button type="button" onclick="updateUserProfile()">수정</button>
+</form>
+
+<script>
+  async function updateUserProfile() {
+      const formData = new FormData();
+      const nickname = document.getElementById("userNickName").value;
+      const image = document.getElementById("image").files[0];
+      const extension = image ? image.name.split('.').pop() : null;
+
+      formData.append("userNickName", nickname);
+      if (extension) {
+          formData.append("extension", extension);
+      }
+      if (image) {
+          formData.append("image", image);
+      }
+
+      // 서버에 FormData 전송
+      try {
+          const response = await axios.post('/api/userprofile/data', formData, {
+              headers: {
+                  'Content-Type': 'multipart/form-data'
+              }
+          });
+
+          alert("프로필이 수정되었습니다!");
+          location.reload();
+      } catch (error) {
+          console.error("프로필 수정 중 오류 발생:", error);
+          alert("프로필 수정에 실패했습니다.");
+      }
+  }
+
+</script>
+
+
+</body>
+</html>

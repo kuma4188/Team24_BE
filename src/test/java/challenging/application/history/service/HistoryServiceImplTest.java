@@ -5,8 +5,8 @@ import challenging.application.domain.category.Category;
 import challenging.application.domain.challenge.entity.Challenge;
 import challenging.application.domain.challenge.service.ChallengeService;
 import challenging.application.domain.history.service.HistoryServiceImpl;
-import challenging.application.global.dto.response.chalenge.ChallengeGetResponse;
-import challenging.application.global.dto.response.history.HistoryGetResponse;
+import challenging.application.global.dto.response.ChallengeResponse;
+import challenging.application.global.dto.response.HistoryResponse;
 import challenging.application.global.error.history.HistoryNotFoundException;
 import challenging.application.domain.history.entity.History;
 import challenging.application.domain.history.repository.HistoryRepository;
@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static challenging.application.global.error.ExceptionMessage.HISTORY_NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -54,12 +55,12 @@ class HistoryServiceImplTest {
     @DisplayName("user history 조회 성공")
     void HISTORY_조회_성공() {
         //given
-        ChallengeGetResponse challengeGetResponse = ChallengeGetResponse.fromEntity(challenge1, 2);
+        ChallengeResponse challengeResponse = ChallengeResponse.fromEntity(challenge1, 2);
         given(historyRepository.findHistoryByMemberIdAndId(1L, 1L)).willReturn(Optional.of(history1));
-        given(challengeService.findOneChallenge(history1.getChallenge().getId())).willReturn(challengeGetResponse);
+        given(challengeService.findOneChallenge(history1.getChallenge().getId())).willReturn(challengeResponse);
 
         //when
-        HistoryGetResponse findHistory = historyService.findOneHistory(1L, 1L);
+        HistoryResponse findHistory = historyService.findOneHistory(1L, 1L);
 
         //then
         assertAll(
@@ -91,15 +92,13 @@ class HistoryServiceImplTest {
         histories.add(history2);
 
         given(historyRepository.findAllByMemberId(anyLong())).willReturn(histories);
-        given(challengeService.findOneChallenge(history1.getChallenge().getId())).willReturn(
-                ChallengeGetResponse.fromEntity(challenge1, 2));
-        given(challengeService.findOneChallenge(history2.getChallenge().getId())).willReturn(
-                ChallengeGetResponse.fromEntity(challenge2, 2));
+        given(challengeService.findOneChallenge(history1.getChallenge().getId())).willReturn(ChallengeResponse.fromEntity(challenge1, 2));
+        given(challengeService.findOneChallenge(history2.getChallenge().getId())).willReturn(ChallengeResponse.fromEntity(challenge2, 2));
         //when
 
-        List<HistoryGetResponse> historyGetRespons = historyService.findAllHistory(1L);
+        List<HistoryResponse> historyResponses = historyService.findAllHistory(1L);
 
-        assertThat(historyGetRespons.size()).isEqualTo(2);
+        assertThat(historyResponses.size()).isEqualTo(2);
     }
 
     @BeforeEach

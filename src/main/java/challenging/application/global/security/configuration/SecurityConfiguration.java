@@ -47,40 +47,38 @@ public class SecurityConfiguration {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                .csrf((auth) -> auth.disable());
+            .csrf(csrf -> csrf.disable())
+            .formLogin(form -> form.disable())
+            .httpBasic(basic -> basic.disable());
 
+        // 필터 순서 조정
         http
-                .formLogin((auth) -> auth.disable());
+            .addFilterBefore(new JWTAccessFilter(jwtUtil, filterResponseUtils), OAuth2LoginAuthenticationFilter.class)
+            .addFilterBefore(new JWTRefreshFilter(refreshTokenRepository, filterResponseUtils), JWTAccessFilter.class)
+            .addFilterBefore(new JWTLogoutFilter(refreshTokenRepository, filterResponseUtils), LogoutFilter.class);
 
+        // OAuth2 로그인 설정
         http
-                .httpBasic((auth) -> auth.disable());
+            .oauth2Login(oauth2 -> oauth2
+                .loginPage("/login")
+                .userInfoEndpoint(userInfoEndpointConfig -> userInfoEndpointConfig.userService(oAuth2UserService))
+                .successHandler(oAuth2SuccessHandler)
+            );
 
+        // URL 접근 권한 설정
         http
-                .addFilterAfter(new JWTAccessFilter(jwtUtil, filterResponseUtils),
-                        OAuth2LoginAuthenticationFilter.class)
-                .addFilterAfter(new JWTRefreshFilter(refreshTokenRepository, filterResponseUtils),
-                        OAuth2LoginAuthenticationFilter.class)
-                .addFilterBefore(new JWTLogoutFilter(refreshTokenRepository, filterResponseUtils), LogoutFilter.class);
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/", "/login", "/reissue", "/h2-console/**" , "/home").permitAll()
+                .anyRequest().authenticated());
 
+        // 세션 관리 설정
         http
-                .oauth2Login((oauth2) -> oauth2
-                        .loginPage("/login")
-                        .userInfoEndpoint(
-                                (userInfoEndpointConfig) -> userInfoEndpointConfig.userService(oAuth2UserService))
-                        .successHandler(oAuth2SuccessHandler)
-                );
-
-        http
-                .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers("/login", "/reissue").permitAll()
-                        .anyRequest().authenticated());
-
-        http
-                .sessionManagement((session) -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
+
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
