@@ -1,5 +1,6 @@
 package challenging.application.global.security.filter;
 
+import challenging.application.global.TokenStorage;
 import challenging.application.global.security.utils.jwt.JWTUtils;
 import challenging.application.global.security.utils.servletUtils.jwtUtils.FilterResponseUtils;
 import challenging.application.domain.auth.constant.AuthConstant;
@@ -50,8 +51,9 @@ public class JWTAccessFilter extends OncePerRequestFilter {
             return;
         }
 
-        String authorization = request.getHeader(AuthConstant.AUTHORIZATION);
-
+        //String authorization = request.getHeader(AuthConstant.AUTHORIZATION);
+        // 타임리프 할동안 얘를 써보자
+        String authorization = TokenStorage.accessToken;
         //Authorization 헤더 검증
         if (checkHeader(authorization)) {
 
