@@ -22,9 +22,9 @@ public enum Category {
 
     public static Category findByCategoryCode(Integer code){
         return Arrays.stream(Category.values())
-                .filter(category -> category.getCategoryCode().equals(code))
-                .findFirst()
-                .orElseThrow(() -> new CategoryNotFoundException(ErrorCode.CATEGORY_NOT_FOUND_ERROR));
+            .filter(category -> category.getCategoryCode().equals(code))
+            .findFirst()
+            .orElseThrow(() -> new CategoryNotFoundException(ErrorCode.CATEGORY_NOT_FOUND_ERROR));
     }
 
     public Integer getCategoryCode(){

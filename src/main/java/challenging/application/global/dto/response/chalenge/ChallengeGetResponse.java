@@ -1,5 +1,6 @@
 package challenging.application.global.dto.response.chalenge;
 
+
 import challenging.application.domain.challenge.entity.Challenge;
 
 public record ChallengeGetResponse(
@@ -15,10 +16,14 @@ public record ChallengeGetResponse(
     int maxParticipantNum,
     int currentParticipantNum,
     Long hostId,
-    int categoryId
+    Integer categoryId  // null 가능성을 허용하도록 Integer로 수정
 ) {
 
   public static ChallengeGetResponse fromEntity(Challenge challenge, int currentParticipantNum) {
+    Integer categoryCode = (challenge.getCategory() != null)
+        ? challenge.getCategory().getCategoryCode()
+        : null;  // null일 경우 기본값 설정 또는 예외 처리
+
     return new ChallengeGetResponse(
         challenge.getId(),
         challenge.getName(),
@@ -32,7 +37,7 @@ public record ChallengeGetResponse(
         challenge.getMaxParticipantNum(),
         currentParticipantNum,
         challenge.getHost().getId(),
-        challenge.getCategory().getCategoryCode()
+        categoryCode  // category가 null일 때를 대비
     );
   }
 }

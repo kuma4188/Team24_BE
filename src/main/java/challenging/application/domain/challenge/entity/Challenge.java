@@ -14,7 +14,7 @@ public class Challenge {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Enumerated(EnumType.STRING)
+  @Enumerated(EnumType.STRING)  // enum 매핑을 위해 추가
   private Category category;
 
   @ManyToOne

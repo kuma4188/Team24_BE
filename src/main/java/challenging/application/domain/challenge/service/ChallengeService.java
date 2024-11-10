@@ -12,6 +12,7 @@ import challenging.application.global.dto.response.chalenge.ChallengeDeleteRespo
 import challenging.application.global.dto.response.chalenge.ChallengeGetResponse;
 import challenging.application.global.dto.response.chalenge.ChallengeReservationResponse;
 import challenging.application.global.error.ErrorCode;
+import challenging.application.global.error.category.CategoryNotFoundException;
 import challenging.application.global.error.challenge.AlreadyReservedException;
 import challenging.application.global.error.challenge.ChallengeNotFoundException;
 import challenging.application.global.error.date.InvalidDateException;
@@ -19,7 +20,6 @@ import challenging.application.global.error.participant.ParticipantLimitExceeded
 import challenging.application.global.error.user.UnauthorizedException;
 import challenging.application.global.error.user.UserNotFoundException;
 import challenging.application.global.dto.request.ChallengeRequest;
-
 import challenging.application.global.images.ImageService;
 import challenging.application.global.images.S3PresignedImageService;
 import java.io.IOException;
@@ -78,27 +78,31 @@ public class ChallengeService {
 
     return challenges.stream()
         .map(
-             challenge -> {
-                int currentParticipantNum = participantRepository.countByChallengeId(challenge.getId());
+            challenge -> {
+              int currentParticipantNum = participantRepository.countByChallengeId(challenge.getId());
 
-                return ChallengeGetResponse.fromEntity(challenge, currentParticipantNum);
+              return ChallengeGetResponse.fromEntity(challenge, currentParticipantNum);
             })
         .collect(Collectors.toList());
   }
 
-  // 챌린지 생성
+  // ChallengeService.java
   @Transactional
   public ChallengeCreateResponse createChallenge(
       ChallengeRequest challengeRequestDTO,
       MultipartFile multipartFile) {
-    Member host = memberRepository.findById(challengeRequestDTO.hostId())
-            .orElseThrow(() -> new UserNotFoundException(ErrorCode.USER_NOT_FOUND_ERROR));
 
+    Member host = memberRepository.findById(challengeRequestDTO.hostId())
+        .orElseThrow(() -> new UserNotFoundException(ErrorCode.USER_NOT_FOUND_ERROR));
+
+    // categoryId로 Category를 찾고, 없으면 예외를 던져 오류 방지
     Category category = Category.findByCategoryCode(challengeRequestDTO.categoryId());
-    
+    if (category == null) {
+      throw new CategoryNotFoundException(ErrorCode.CATEGORY_NOT_FOUND_ERROR);
+    }
 
     Challenge challenge = Challenge.builder()
-        .category(category)
+        .category(category)  // category가 null이 아님을 보장
         .host(host)
         .name(challengeRequestDTO.challengeName())
         .body(challengeRequestDTO.challengeBody())
@@ -111,12 +115,9 @@ public class ChallengeService {
         .maxParticipantNum(challengeRequestDTO.maxParticipantNum())
         .build();
 
+    // 이미지 업로드 및 챌린지 저장
     Long challengId = challenge.getId();
-
-    String imgUrl = null;
-
-    imgUrl = imageService.imageload(multipartFile, challengId);
-
+    String imgUrl = imageService.imageload(multipartFile, challengId);
     challenge.updateImgUrl(imgUrl);
 
     Challenge savedChallenge = challengeRepository.save(challenge);
@@ -124,9 +125,9 @@ public class ChallengeService {
     Participant participant = new Participant(savedChallenge, host);
     participantRepository.save(participant);
 
-
-    return new ChallengeCreateResponse(savedChallenge.getId(),savedChallenge.getImgUrl());
+    return new ChallengeCreateResponse(savedChallenge.getId(), savedChallenge.getImgUrl());
   }
+
 
 
   // 챌린지 삭제
