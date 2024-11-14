@@ -1,5 +1,7 @@
 package challenging.application.domain.challenge.controller;
 
+import challenging.application.global.dto.request.ChallengeVoteRequest;
+import challenging.application.global.dto.response.chalenge.ChallengeCancelResponse;
 import challenging.application.global.dto.response.chalenge.ChallengeCreateResponse;
 import challenging.application.global.dto.response.chalenge.ChallengeDeleteResponse;
 import challenging.application.global.dto.response.chalenge.ChallengeGetResponse;
@@ -40,10 +42,19 @@ public class ChallengeController {
     }
 
     // 챌린지 카테고리 조회
-    @GetMapping()
-    public ResponseEntity<ApiResponse<?>> getChallengesByCategory() {
+    @GetMapping
+    public ResponseEntity<ApiResponse<?>> getChallenges() {
 
-        List<ChallengeGetResponse> responses = challengeService.getChallengesByCategoryAndDate();
+        List<ChallengeGetResponse> responses = challengeService.getChallengesByDate();
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiResponse.successResponse(responses));
+    }
+
+    @GetMapping("/waiting")
+    public ResponseEntity<ApiResponse<?>> getWaitingChallenges(@LoginMember Member member) {
+        List<ChallengeGetResponse> responses = challengeService.findWaitingChallenges(member);
 
         return ResponseEntity.status(HttpStatus.OK)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -53,8 +64,10 @@ public class ChallengeController {
     // 챌린지 생성
     @PostMapping
     public ResponseEntity<ApiResponse<?>> createChallenge(
-        @RequestPart(value = "dto") ChallengeRequest challengeRequestDTO,
-        @RequestParam("upload") MultipartFile multipartFile) {
+        @ModelAttribute ChallengeRequest challengeRequestDTO,
+        @RequestParam("image") MultipartFile multipartFile
+    ){
+
 
         ChallengeCreateResponse response = challengeService.createChallenge(challengeRequestDTO,multipartFile);
 
@@ -87,5 +100,34 @@ public class ChallengeController {
         return ResponseEntity.status(HttpStatus.OK)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(ApiResponse.successResponse(challengeResponse));
+    }
+
+    @PostMapping("/{challengeId}/cancel")
+    public ResponseEntity<?> cancelChallenge(
+            @PathVariable Long challengeId,
+            @LoginMember Member member){
+
+        challengeService.cancelChallenge(challengeId, member);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiResponse.successResponseWithMessage(
+                        "챌린지를 취소하였습니다.",
+                        new ChallengeCancelResponse(challengeId, member.getUuid())
+                ));
+
+    }
+
+    @PostMapping("/{challengeId}/vote")
+    public ResponseEntity<?> voteChallenge(
+            @PathVariable Long challengeId,
+            @RequestBody ChallengeVoteRequest challengeVoteRequest){
+
+        challengeService.voteChallenge(challengeId, challengeVoteRequest);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiResponse.successResponseWithMessage("투표가 성공적으로 처리되었습니다.", null));
+
     }
 }

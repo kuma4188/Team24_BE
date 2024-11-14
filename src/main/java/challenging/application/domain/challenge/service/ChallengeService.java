@@ -5,8 +5,11 @@ import challenging.application.domain.auth.repository.MemberRepository;
 import challenging.application.domain.category.Category;
 import challenging.application.domain.challenge.entity.Challenge;
 import challenging.application.domain.challenge.repository.ChallengeRepository;
+import challenging.application.domain.history.entity.History;
+import challenging.application.domain.history.repository.HistoryRepository;
 import challenging.application.domain.participant.entity.Participant;
 import challenging.application.domain.participant.repository.ParticipantRepository;
+import challenging.application.global.dto.request.ChallengeVoteRequest;
 import challenging.application.global.dto.response.chalenge.ChallengeCreateResponse;
 import challenging.application.global.dto.response.chalenge.ChallengeDeleteResponse;
 import challenging.application.global.dto.response.chalenge.ChallengeGetResponse;
@@ -14,18 +17,13 @@ import challenging.application.global.dto.response.chalenge.ChallengeReservation
 import challenging.application.global.error.ErrorCode;
 import challenging.application.global.error.challenge.AlreadyReservedException;
 import challenging.application.global.error.challenge.ChallengeNotFoundException;
-import challenging.application.global.error.date.InvalidDateException;
 import challenging.application.global.error.participant.ParticipantLimitExceededException;
 import challenging.application.global.error.user.UnauthorizedException;
 import challenging.application.global.error.user.UserNotFoundException;
 import challenging.application.global.dto.request.ChallengeRequest;
 
 import challenging.application.global.images.ImageService;
-import challenging.application.global.images.S3PresignedImageService;
-import java.io.IOException;
 import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -38,20 +36,18 @@ public class ChallengeService {
   private final ChallengeRepository challengeRepository;
   private final MemberRepository memberRepository;
   private final ParticipantRepository participantRepository;
-  private final S3PresignedImageService s3PresignedImageService;
   private final ImageService imageService;
-  private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(
-      "yyyy-MM-dd:HH:mm");
+  private final HistoryRepository historyRepository;
 
   public ChallengeService(ChallengeRepository challengeRepository,
       MemberRepository memberRepository,
-      ParticipantRepository participantRepository, S3PresignedImageService s3PresignedImageService,
-      ImageService imageService) {
+      ParticipantRepository participantRepository, ImageService imageService,
+      HistoryRepository historyRepository) {
     this.challengeRepository = challengeRepository;
     this.memberRepository = memberRepository;
     this.participantRepository = participantRepository;
-    this.s3PresignedImageService = s3PresignedImageService;
     this.imageService = imageService;
+    this.historyRepository = historyRepository;
   }
 
   // 챌린지 단건 조회
@@ -67,7 +63,7 @@ public class ChallengeService {
 
   // 전체 챌린지 조회
   @Transactional(readOnly = true)
-  public List<ChallengeGetResponse> getChallengesByCategoryAndDate() {
+  public List<ChallengeGetResponse> getChallengesByDate() {
     LocalDateTime current = LocalDateTime.now();
 
 
@@ -86,23 +82,34 @@ public class ChallengeService {
         .collect(Collectors.toList());
   }
 
+  @Transactional(readOnly = true)
+  public List<ChallengeGetResponse> findWaitingChallenges(Member member) {
+    return participantRepository.findAllByMemberId(member.getId()).stream()
+            .map(Participant::getChallenge)
+            .filter(challenge -> !challenge.isEndChallenge())
+            .map(challenge -> {
+              int currentParticipantNum = participantRepository.countByChallengeId(challenge.getId());
+              return ChallengeGetResponse.fromEntity(challenge, currentParticipantNum);
+            })
+            .collect(Collectors.toList());
+  }
+
+
   // 챌린지 생성
   @Transactional
   public ChallengeCreateResponse createChallenge(
       ChallengeRequest challengeRequestDTO,
       MultipartFile multipartFile) {
-    Member host = memberRepository.findById(challengeRequestDTO.hostId())
+
+    Member host = memberRepository.findByUuid(challengeRequestDTO.hostUuid())
             .orElseThrow(() -> new UserNotFoundException(ErrorCode.USER_NOT_FOUND_ERROR));
 
-    Category category = Category.findByCategoryCode(challengeRequestDTO.categoryId());
-    
-
     Challenge challenge = Challenge.builder()
-        .category(category)
         .host(host)
         .name(challengeRequestDTO.challengeName())
         .body(challengeRequestDTO.challengeBody())
         .point(challengeRequestDTO.point())
+        .category(Category.findByCategoryCode(challengeRequestDTO.categoryId()))
         .date(LocalDate.parse(challengeRequestDTO.challengeDate()))
         .startTime(LocalTime.parse(challengeRequestDTO.startTime()))
         .endTime(LocalTime.parse(challengeRequestDTO.endTime()))
@@ -111,19 +118,19 @@ public class ChallengeService {
         .maxParticipantNum(challengeRequestDTO.maxParticipantNum())
         .build();
 
-    Long challengId = challenge.getId();
+    Challenge savedChallenge = challengeRepository.save(challenge);
 
     String imgUrl = null;
 
-    imgUrl = imageService.imageload(multipartFile, challengId);
+    imgUrl = imageService.imageload(multipartFile, savedChallenge.getId());
 
     challenge.updateImgUrl(imgUrl);
 
-    Challenge savedChallenge = challengeRepository.save(challenge);
+    host.getUserProfile().usePoint(challengeRequestDTO.point());
 
     Participant participant = new Participant(savedChallenge, host);
-    participantRepository.save(participant);
 
+    participantRepository.save(participant);
 
     return new ChallengeCreateResponse(savedChallenge.getId(),savedChallenge.getImgUrl());
   }
@@ -135,13 +142,19 @@ public class ChallengeService {
     Challenge challenge = challengeRepository.findById(challengeId)
         .orElseThrow(() -> new ChallengeNotFoundException(ErrorCode.CHALLENGE_NOT_FOUND_ERROR));
 
-    if (!challenge.getHost().getId().equals(user.getId())) {
+    if (!challenge.getHost().getUuid().equals(user.getUuid())) {
       throw new UnauthorizedException(ErrorCode.UNAUTHORIZED_USER_ERROR);
+    }
+
+    List<Participant> participants = challenge.getParticipants();
+    for (Participant participant : participants) {
+      Member member = participant.getMember();
+      member.getUserProfile().addPoint(challenge.getPoint());
     }
 
     imageService.deleteImageByUrl(challenge.getImgUrl());
 
-    challengeRepository.delete(challenge);
+    challengeRepository.deleteById(challenge.getId());
 
     return new ChallengeDeleteResponse(challengeId);
   }
@@ -152,7 +165,7 @@ public class ChallengeService {
     Challenge challenge = challengeRepository.findById(challengeId)
         .orElseThrow(() -> new ChallengeNotFoundException(ErrorCode.CHALLENGE_NOT_FOUND_ERROR));
 
-    if (participantRepository.existsByChallengeIdAndMemberId(challengeId, user.getId())) {
+    if (participantRepository.findParticipantByChallengeIdAndMemberId(challengeId, user.getId()).isPresent()) {
       throw new AlreadyReservedException(ErrorCode.CHALLENGE_ALREADY_RESERVED_ERROR);
     }
 
@@ -162,10 +175,12 @@ public class ChallengeService {
       throw new ParticipantLimitExceededException(ErrorCode.PARTICIPANT_LIMIT_ERROR);
     }
 
+    user.getUserProfile().usePoint(challenge.getPoint());
+
     Participant participant = new Participant(challenge, user);
     participantRepository.save(participant);
 
-    return new ChallengeReservationResponse(challengeId,user.getId());
+    return new ChallengeReservationResponse(challengeId,user.getUuid());
   }
 
   @Transactional(readOnly = true)
@@ -178,5 +193,57 @@ public class ChallengeService {
     return ChallengeGetResponse.fromEntity(challenge, participantNum);
   }
 
+  @Transactional
+  public void cancelChallenge(Long challengeId, Member member){
+    Challenge challenge = challengeRepository.findById(challengeId)
+            .orElseThrow(() -> new ChallengeNotFoundException(ErrorCode.CHALLENGE_NOT_FOUND_ERROR));
 
+    Participant participant = participantRepository.findParticipantByChallengeIdAndMemberId(challengeId, member.getId())
+            .orElseThrow(() -> new RuntimeException());
+
+    participantRepository.delete(participant);
+
+    member.getUserProfile().addPoint(challenge.getPoint());
+  }
+
+  @Transactional
+  public void voteChallenge(Long challengeId, ChallengeVoteRequest challengeVoteRequest) {
+    Challenge challenge = challengeRepository.findById(challengeId)
+        .orElseThrow(() -> new ChallengeNotFoundException(ErrorCode.CHALLENGE_NOT_FOUND_ERROR));
+
+    List<Participant> participants = participantRepository.findAllByChallengeId(challengeId);
+
+    long successCount = participants.stream()
+        .filter(participant -> !participant.getMember().getUuid().equals(challengeVoteRequest.banUuid()))
+        .count();
+
+    int dividedPoints = (challenge.getPoint() * participants.size()) / (int) successCount ;
+
+    for (Participant participant : participants) {
+      Member member = participant.getMember();
+
+      boolean isSucceed = !member.getUuid().equals(challengeVoteRequest.banUuid());
+
+      int point = 0;
+
+      if (isSucceed){
+        point = dividedPoints;
+      }
+
+      if (isSucceed) {
+        member.getUserProfile().addPoint(point);
+        memberRepository.save(member);
+      }
+
+      History history = History.builder()
+          .isSucceed(isSucceed)
+          .isHost(member.equals(challenge.getHost()))
+          .point(point)
+          .member(member)
+          .challenge(challenge)
+          .build();
+
+      historyRepository.save(history);
+    }
+  }
 }

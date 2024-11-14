@@ -7,6 +7,7 @@ public record ChallengeGetResponse(
     String challengeName,
     String challengeBody,
     int point,
+    Integer categoryId,
     String challengeDate,
     String startTime,
     String endTime,
@@ -14,8 +15,7 @@ public record ChallengeGetResponse(
     int minParticipantNum,
     int maxParticipantNum,
     int currentParticipantNum,
-    Long hostId,
-    int categoryId
+    String hostUuid
 ) {
 
   public static ChallengeGetResponse fromEntity(Challenge challenge, int currentParticipantNum) {
@@ -24,6 +24,7 @@ public record ChallengeGetResponse(
         challenge.getName(),
         challenge.getBody(),
         challenge.getPoint(),
+        challenge.getCategory().getCategoryCode(),
         challenge.getDate().toString(),
         challenge.getStartTime().toString(),
         challenge.getEndTime().toString(),
@@ -31,8 +32,7 @@ public record ChallengeGetResponse(
         challenge.getMinParticipantNum(),
         challenge.getMaxParticipantNum(),
         currentParticipantNum,
-        challenge.getHost().getId(),
-        challenge.getCategory().getCategoryCode()
+        challenge.getHost().getUuid()
     );
   }
 }

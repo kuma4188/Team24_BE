@@ -18,9 +18,12 @@ public class UserProfile {
     private String userNickName;
 
     private Integer point;
-    private String imageExtension;
 
-    public UserProfile() {}
+    private String imgUrl;
+
+    public UserProfile() {
+        point = 0;
+    }
 
     public UserProfile(Long id, Member member, String userNickName, Integer point) {
         this.id = id;
@@ -37,8 +40,8 @@ public class UserProfile {
         return point;
     }
 
-    public String getImageExtension() {
-        return imageExtension;
+    public String getImgUrl() {
+        return imgUrl;
     }
 
     public Member getMember() {
@@ -46,14 +49,26 @@ public class UserProfile {
     }
 
     public void updateUserNickName(String userNickName) {
-        if (userNickName != null){
+        if (userNickName != null) {
             this.userNickName = userNickName;
         }
     }
 
-    public void updateImageExtension(String imageExtension) {
-        if (imageExtension != null){
-            this.imageExtension = imageExtension;
+    public void updateImgUrl(String imgUrl) {
+        if (imgUrl != null) {
+            this.imgUrl = imgUrl;
         }
+    }
+
+    public void addPoint(Integer point) {
+        this.point += point;
+    }
+
+    public void usePoint(Integer point) {
+        if(this.point < point){
+            throw new IllegalArgumentException("보유 포인트가 부족합니다.");
+        }
+
+        this.point -= point;
     }
 }
